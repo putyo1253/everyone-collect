@@ -8,22 +8,22 @@
         body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
         .container { max-width: 1000px; margin: auto; }
         table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; }
-        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        th, td { padding: 12px; border: 1px solid #ddd; vertical-align: top; }
         th { background: #2c3e50; color: white; }
         textarea { width: 95%; min-height: 40px; border: 1px solid #ccc; padding: 5px; resize: vertical; display: block; }
         .marked { background-color: #fff3e0 !important; }
-        .link-text { color: #3498db; text-decoration: underline; font-size: 0.9em; }
+        .link-item { display: block; font-size: 0.85em; color: #3498db; text-decoration: underline; word-break: break-all; margin-top: 2px; }
     </style>
 </head>
 <body>
 
 <div id="app" class="container">
-    <h1>装置建設進捗リスト</h1>
+    <h1>🚀 装置建設進捗リスト</h1>
     <input v-model="search" placeholder="アイテム検索..." style="width: 100%; padding: 10px; margin-bottom: 10px;">
 
     <table>
         <thead>
-            <tr><th>マーク</th><th>アイテム名</th><th>ステータス</th><th>メモ</th></tr>
+            <tr><th>マーク</th><th>アイテム名</th><th>ステータス</th><th>メモ (URL可)</th></tr>
         </thead>
         <tbody>
             <tr v-for="item in sortedItems" :key="item.name" :class="{ marked: item.isMarked }">
@@ -35,8 +35,11 @@
                     </select>
                 </td>
                 <td>
-                    <textarea v-model="item.memo" @blur="save(item)" @input="autoResize"></textarea>
-                    <a v-if="isUrl(item.memo)" :href="item.memo" target="_blank" class="link-text">🔗 リンクを開く</a>
+                    <textarea v-model="item.memo" @blur="save(item)" @input="autoResize" placeholder="メモやURLを入力..."></textarea>
+                    <!-- URLを抽出して表示 -->
+                    <div v-for="url in extractUrls(item.memo)" :key="url">
+                        <a :href="url" target="_blank" class="link-item">🔗 {{ url.substring(0, 30) }}...</a>
+                    </div>
                 </td>
             </tr>
         </tbody>
@@ -62,8 +65,17 @@ createApp({
         }
     },
     methods: {
-        isUrl(str) { return str && str.startsWith('http'); },
-        autoResize(e) { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; },
+        // メモからURLを抽出する関数
+        extractUrls(str) {
+            if (!str) return [];
+            // httpかhttpsで始まり、スペースや改行以外の文字が続くものを抽出
+            const regex = /(https?:\/\/[^\s]+)/g;
+            return str.match(regex) || [];
+        },
+        autoResize(e) {
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+        },
         save(item) {
             fetch(WEB_APP_URL, { 
                 method: "POST", 
