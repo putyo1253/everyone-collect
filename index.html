@@ -7,26 +7,34 @@
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
         .container { max-width: 1000px; margin: auto; }
-        table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; }
-        th, td { padding: 12px; border: 1px solid #ddd; vertical-align: top; }
-        th { background: #2c3e50; color: white; }
-        textarea { width: 95%; min-height: 40px; border: 1px solid #ccc; padding: 5px; resize: vertical; display: block; }
+        /* 全体メモのスタイル */
+        .global-note { background: #fff; padding: 20px; border-radius: 12px; border: 2px solid #2c3e50; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .global-note textarea { width: 100%; min-height: 80px; border: none; font-size: 1.1em; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 10px; border: 1px solid #ddd; }
         .marked { background-color: #fff3e0 !important; }
-        .link-item { display: block; font-size: 0.85em; color: #3498db; text-decoration: underline; word-break: break-all; margin-top: 2px; }
+        textarea { width: 95%; min-height: 40px; border: 1px solid #ccc; padding: 5px; resize: vertical; }
     </style>
 </head>
 <body>
 
 <div id="app" class="container">
-    <h1>装置建設進捗リスト</h1>
+    <h1>🚀 装置建設進捗リスト</h1>
+
+    <!-- 全体メモ欄 -->
+    <div class="global-note" v-if="globalItem">
+        <h3>🌍 ワールド全体メモ・重要座標</h3>
+        <textarea v-model="globalItem.coords" @blur="save(globalItem)" placeholder="ここにワールドのルールや重要拠点座標を書いてね"></textarea>
+    </div>
+
     <input v-model="search" placeholder="アイテム検索..." style="width: 100%; padding: 10px; margin-bottom: 10px;">
 
     <table>
         <thead>
-            <tr><th>マーク</th><th>アイテム名</th><th>ステータス</th><th>メモ (URL可)</th></tr>
+            <tr><th>マーク</th><th>アイテム名</th><th>ステータス</th><th>詳細メモ</th><th>リンク</th></tr>
         </thead>
         <tbody>
-            <tr v-for="item in sortedItems" :key="item.name" :class="{ marked: item.isMarked }">
+            <tr v-for="item in filteredItems" :key="item.name" :class="{ marked: item.isMarked }">
                 <td><input type="checkbox" v-model="item.isMarked" @change="save(item)"></td>
                 <td>{{ item.name }}</td>
                 <td>
@@ -34,11 +42,9 @@
                         <option>未着手</option><option>製作中</option><option>完了</option>
                     </select>
                 </td>
+                <td><textarea v-model="item.coords" @blur="save(item)"></textarea></td>
                 <td>
-                    <textarea v-model="item.memo" @blur="save(item)" @input="autoResize" placeholder="メモやURLを入力..."></textarea>
-                    <div v-for="url in extractUrls(item.memo)" :key="url">
-                        <a :href="url" target="_blank" class="link-item">🔗 {{ url.substring(0, 30) }}...</a>
-                    </div>
+                    <textarea v-model="item.links" @blur="save(item)" placeholder="URLを貼り付け"></textarea>
                 </td>
             </tr>
         </tbody>
@@ -50,36 +56,26 @@ const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbya_YCNPPpi-F0VCgf0
 
 const { createApp } = Vue;
 createApp({
-    data() { return { items: [], search: '' } },
+    data() { return { items: [], search: '', globalItem: null } },
     mounted() { 
         fetch(WEB_APP_URL)
         .then(r => r.json())
-        .then(d => { this.items = d; }); 
+        .then(d => {
+            // !GLOBAL_NOTE という名前の行を全体メモとして分離
+            this.globalItem = d.find(i => i.name === '!GLOBAL_NOTE');
+            this.items = d.filter(i => i.name !== '!GLOBAL_NOTE');
+        }); 
     },
     computed: {
-        sortedItems() {
+        filteredItems() {
             return this.items
                 .filter(i => i.name.toLowerCase().includes(this.search.toLowerCase()))
                 .sort((a, b) => b.isMarked - a.isMarked);
         }
     },
     methods: {
-        // メモからURLを抽出する関数
-        extractUrls(str) {
-            if (!str) return [];
-            // httpかhttpsで始まり、スペースや改行以外の文字が続くものを抽出
-            const regex = /(https?:\/\/[^\s]+)/g;
-            return str.match(regex) || [];
-        },
-        autoResize(e) {
-            e.target.style.height = 'auto';
-            e.target.style.height = e.target.scrollHeight + 'px';
-        },
         save(item) {
-            fetch(WEB_APP_URL, { 
-                method: "POST", 
-                body: JSON.stringify(item) 
-            });
+            fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify(item) });
         }
     }
 }).mount('#app')
