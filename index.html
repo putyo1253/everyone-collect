@@ -2,18 +2,19 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft 自動化管理システム</title>
+    <title>Minecraft 自動化管理</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
         body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; }
-        /* 全体メモのスタイル */
-        .global-note { background: #fff; padding: 20px; border-radius: 12px; border: 2px solid #2c3e50; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .global-note textarea { width: 100%; min-height: 80px; border: none; font-size: 1.1em; }
+        .container { max-width: 900px; margin: auto; }
+        /* 全体メモの特別なスタイル */
+        .global-note { background: #fff; padding: 20px; border-radius: 12px; border: 3px solid #2c3e50; margin-bottom: 25px; }
+        .global-note textarea { width: 100%; min-height: 100px; border: none; font-size: 1.1em; resize: vertical; }
         table { width: 100%; border-collapse: collapse; background: white; }
-        th, td { padding: 10px; border: 1px solid #ddd; }
+        th, td { padding: 12px; border: 1px solid #ddd; }
+        textarea { width: 95%; min-height: 40px; border: 1px solid #ccc; padding: 5px; resize: vertical; display: block; }
         .marked { background-color: #fff3e0 !important; }
-        textarea { width: 95%; min-height: 40px; border: 1px solid #ccc; padding: 5px; resize: vertical; }
+        .link-item { color: #3498db; text-decoration: underline; display: block; font-size: 0.8em; }
     </style>
 </head>
 <body>
@@ -21,20 +22,18 @@
 <div id="app" class="container">
     <h1>🚀 装置建設進捗リスト</h1>
 
-    <!-- 全体メモ欄 -->
+    <!-- 全体メモ欄: 行が増えても自動調整 -->
     <div class="global-note" v-if="globalItem">
-        <h3>🌍 ワールド全体メモ・重要座標</h3>
-        <textarea v-model="globalItem.coords" @blur="save(globalItem)" placeholder="ここにワールドのルールや重要拠点座標を書いてね"></textarea>
+        <h3>ワールド全体メモ・重要座標</h3>
+        <textarea v-model="globalItem.memo" @blur="save(globalItem)" @input="autoResize" placeholder="ルールや拠点の座標など..."></textarea>
     </div>
 
     <input v-model="search" placeholder="アイテム検索..." style="width: 100%; padding: 10px; margin-bottom: 10px;">
 
     <table>
-        <thead>
-            <tr><th>マーク</th><th>アイテム名</th><th>ステータス</th><th>詳細メモ</th><th>リンク</th></tr>
-        </thead>
+        <thead><tr><th>マーク</th><th>アイテム名</th><th>ステータス</th><th>メモ・リンク</th></tr></thead>
         <tbody>
-            <tr v-for="item in filteredItems" :key="item.name" :class="{ marked: item.isMarked }">
+            <tr v-for="item in sortedItems" :key="item.name" :class="{ marked: item.isMarked }">
                 <td><input type="checkbox" v-model="item.isMarked" @change="save(item)"></td>
                 <td>{{ item.name }}</td>
                 <td>
@@ -42,9 +41,11 @@
                         <option>未着手</option><option>製作中</option><option>完了</option>
                     </select>
                 </td>
-                <td><textarea v-model="item.coords" @blur="save(item)"></textarea></td>
                 <td>
-                    <textarea v-model="item.links" @blur="save(item)" placeholder="URLを貼り付け"></textarea>
+                    <textarea v-model="item.memo" @blur="save(item)" @input="autoResize"></textarea>
+                    <div v-for="url in extractUrls(item.memo)">
+                        <a :href="url" target="_blank" class="link-item">🔗 {{ url.substring(0, 30) }}...</a>
+                    </div>
                 </td>
             </tr>
         </tbody>
@@ -61,22 +62,21 @@ createApp({
         fetch(WEB_APP_URL)
         .then(r => r.json())
         .then(d => {
-            // !GLOBAL_NOTE という名前の行を全体メモとして分離
             this.globalItem = d.find(i => i.name === '!GLOBAL_NOTE');
             this.items = d.filter(i => i.name !== '!GLOBAL_NOTE');
         }); 
     },
     computed: {
-        filteredItems() {
+        sortedItems() {
             return this.items
                 .filter(i => i.name.toLowerCase().includes(this.search.toLowerCase()))
                 .sort((a, b) => b.isMarked - a.isMarked);
         }
     },
     methods: {
-        save(item) {
-            fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify(item) });
-        }
+        extractUrls(str) { return str ? (str.match(/(https?:\/\/[^\s]+)/g) || []) : []; },
+        autoResize(e) { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; },
+        save(item) { fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify(item) }); }
     }
 }).mount('#app')
 </script>
