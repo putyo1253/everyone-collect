@@ -18,7 +18,7 @@
 <body>
 
 <div id="app" class="container">
-    <h1>🚀 装置建設進捗リスト</h1>
+    <h1>装置建設進捗リスト</h1>
     <input v-model="search" placeholder="アイテム検索..." style="width: 100%; padding: 10px; margin-bottom: 10px;">
 
     <table>
@@ -36,7 +36,6 @@
                 </td>
                 <td>
                     <textarea v-model="item.memo" @blur="save(item)" @input="autoResize" placeholder="メモやURLを入力..."></textarea>
-                    <!-- URLを抽出して表示 -->
                     <div v-for="url in extractUrls(item.memo)" :key="url">
                         <a :href="url" target="_blank" class="link-item">🔗 {{ url.substring(0, 30) }}...</a>
                     </div>
