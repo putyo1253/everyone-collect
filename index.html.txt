@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Minecraft 自動化管理システム</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; }
+        .controls { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 12px; border: 1px solid #ddd; }
+        input[type="text"] { width: 90%; padding: 5px; }
+        .marked { background-color: #fff3e0 !important; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="app" class="container">
+    <h1>🚀 装置建設進捗リスト</h1>
+    <div class="controls">
+        <input v-model="search" placeholder="アイテム検索...">
+    </div>
+
+    <table>
+        <thead>
+            <tr><th>マーク</th><th>アイテム名</th><th>ステータス</th><th>メモ</th></tr>
+        </thead>
+        <tbody>
+            <tr v-for="item in sortedItems" :key="item.name" :class="{ marked: item.isMarked }">
+                <td><input type="checkbox" v-model="item.isMarked" @change="save(item)"></td>
+                <td>{{ item.name }}</td>
+                <td>
+                    <select v-model="item.status" @change="save(item)">
+                        <option>未着手</option><option>製作中</option><option>完了</option>
+                    </select>
+                </td>
+                <td><input type="text" v-model="item.memo" @blur="save(item)">"></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+// 新しいURLを反映
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbya_YCNPPpi-F0VCgf0PDukdqyNnK81howAxoQVJ_Y2HFi_trjZqUWPmkahwx9rvUbL/exec";
+
+const { createApp } = Vue;
+createApp({
+    data() { return { items: [], search: '' } },
+    mounted() { 
+        fetch(WEB_APP_URL)
+        .then(r => r.json())
+        .then(d => {
+            // スプレッドシートの行数に合わせてデータを整形
+            this.items = d.filter(i => i.name).map(i => ({...i, isMarked: !!i.isMarked}));
+        }); 
+    },
+    computed: {
+        sortedItems() {
+            return this.items
+                .filter(i => i.name.toLowerCase().includes(this.search.toLowerCase()))
+                .sort((a, b) => b.isMarked - a.isMarked);
+        }
+    },
+    methods: {
+        save(item) {
+            fetch(WEB_APP_URL, { 
+                method: "POST", 
+                body: JSON.stringify(item) 
+            });
+        }
+    }
+}).mount('#app')
+</script>
+</body>
+</html>
